@@ -1,5 +1,5 @@
 #include <QSettings>
-#include "qextserialenumerator.h"
+#include <QSerialPortInfo>
 #include "serialsettingswidget.h"
 #include "ui_serialsettingswidget.h"
 
@@ -22,21 +22,11 @@ int SerialSettingsWidget::setupModbusPort()
 	QSettings s;
 
 	int portIndex = 0;
-	int i = 0;
-    ui->serialPort->disconnect();
-    ui->serialPort->clear();
-	foreach( QextPortInfo port, QextSerialEnumerator::getPorts() )
+	ui->serialPort->disconnect();
+	ui->serialPort->clear();
+	foreach( QSerialPortInfo port, QSerialPortInfo::availablePorts() )
 	{
-#ifdef Q_OS_WIN
-        ui->serialPort->addItem( port.friendName );
-#else
-        ui->serialPort->addItem( port.physName );
-#endif
-		if( port.friendName == s.value( "serialinterface" ) )
-		{
-			portIndex = i;
-		}
-		++i;
+		ui->serialPort->addItem( port.portName() );
 	}
 	ui->serialPort->setCurrentIndex( portIndex );
 
@@ -75,23 +65,23 @@ static inline QString embracedString( const QString & s )
     return s.section( '(', 1 ).section( ')', 0, 0 );
 }
 
-
 void SerialSettingsWidget::changeSerialPort( int )
 {
 	const int iface = ui->serialPort->currentIndex();
 
-	QList<QextPortInfo> ports = QextSerialEnumerator::getPorts();
+	QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
+
 	if( !ports.isEmpty() )
 	{
-		QSettings settings;
-		settings.setValue( "serialinterface", ports[iface].friendName );
-		settings.setValue( "serialbaudrate", ui->baud->currentText() );
-		settings.setValue( "serialparity", ui->parity->currentText() );
-		settings.setValue( "serialdatabits", ui->dataBits->currentText() );
-		settings.setValue( "serialstopbits", ui->stopBits->currentText() );
-#ifdef Q_OS_WIN32
-		QString port = ports[iface].portName;
+		QString portName = ports[iface].portName();
 
+		QSettings settings;
+		settings.setValue( "serialinterface", portName );
+		settings.setValue( "serialbaudrate",  ui->baud->currentText() );
+		settings.setValue( "serialparity",    ui->parity->currentText() );
+		settings.setValue( "serialdatabits",  ui->dataBits->currentText() );
+		settings.setValue( "serialstopbits",  ui->stopBits->currentText() );
+#ifdef Q_OS_WIN32
 		// is it a serial port in the range COM1 .. COM9?
 		if ( port.startsWith( "COM" ) )
 		{
@@ -99,7 +89,7 @@ void SerialSettingsWidget::changeSerialPort( int )
 			port = "\\\\.\\" + port;
 		}
 #else
-		const QString port = ports[iface].physName;
+		portName = "/dev/" + portName;
 #endif
 
 		char parity;
@@ -111,7 +101,7 @@ void SerialSettingsWidget::changeSerialPort( int )
 			case 0: parity = 'N'; break;
 		}
 
-		changeModbusInterface(port, parity);
+		changeModbusInterface(portName, parity);
 
 		emit serialPortActive(true);
 	}
@@ -120,7 +110,6 @@ void SerialSettingsWidget::changeSerialPort( int )
 		emit connectionError( tr( "No serial port found" ) );
 	}
 }
-
 
 void SerialSettingsWidget::enableGuiItems(bool checked)
 {
