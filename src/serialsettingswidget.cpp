@@ -24,9 +24,9 @@ int SerialSettingsWidget::setupModbusPort()
 	int portIndex = 0;
 	ui->serialPort->disconnect();
 	ui->serialPort->clear();
-	foreach( QSerialPortInfo port, QSerialPortInfo::availablePorts() )
+	foreach( QSerialPortInfo info, QSerialPortInfo::availablePorts() )
 	{
-		ui->serialPort->addItem( port.portName() );
+		ui->serialPort->addItem( info.portName() );
 	}
 	ui->serialPort->setCurrentIndex( portIndex );
 
@@ -83,13 +83,13 @@ void SerialSettingsWidget::changeSerialPort( int )
 		settings.setValue( "serialstopbits",  ui->stopBits->currentText() );
 #ifdef Q_OS_WIN32
 		// is it a serial port in the range COM1 .. COM9?
-		if ( port.startsWith( "COM" ) )
+		if ( portName.startsWith( "COM" ) )
 		{
 			// use windows communication device name "\\.\COMn"
-			port = "\\\\.\\" + port;
+			portName = "\\\\.\\" + portName;
 		}
 #else
-		portName = "/dev/" + portName;
+		portName = ports[iface].systemLocation();
 #endif
 
 		char parity;
